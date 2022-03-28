@@ -129,7 +129,7 @@ dmypy.json
 .pyre/
 
 # Other
-*.vscode
+.vscode
 __pycache__
 dataset
 *.png
