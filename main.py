@@ -17,8 +17,6 @@ print(sys.executable)
 
 ######################################################################################################################
 
-train_dataset, test_dataset = data.getMnistData()
-
 nA = node.Node(28 * 28, id = "in_node")
 nB = node.Node(256, activation = "ReLU", id = "node_b")
 nC = node.Node(128, activation = "ReLU", id = "node_c")
@@ -54,6 +52,10 @@ neural_net.addLink(lCD)
 neural_net.addLink(lbB)
 neural_net.addLink(lbC)
 neural_net.addLink(lbD)
+
+######################################################################################################################
+
+train_dataset, test_dataset = data.getMnistData()
 
 neural_net.train(train_dataset)
 
