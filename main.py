@@ -18,8 +18,8 @@ print(sys.executable)
 ######################################################################################################################
 
 nA = node.Node(28 * 28, id = "in_node")
-nB = node.Node(256, activation = "ReLU", id = "node_b")
-nC = node.Node(128, activation = "ReLU", id = "node_c")
+nB = node.Node(250, activation = "ReLU", id = "node_b") #250 works fine
+nC = node.Node(125, activation = "ReLU", id = "node_c") #125 works fine
 nD = node.Node(10, activation = "SOFTMAX", loss = "CROSS_ENTROPY", id = "out_node")
 
 lAB = link.Link(nA, nB, "FULLY_CONNECTED")
@@ -57,13 +57,17 @@ neural_net.addLink(lbD)
 
 train_dataset, test_dataset = data.getMnistData()
 
+neural_net.test(train_dataset)
+
 neural_net.train(train_dataset)
 
-in_val = input("enter to read\n")
-while (in_val != "exit"):
-    image = data.readSingleImage("number.png")
-    neural_net.predict(image)
-    in_val = input("enter to read\n")
+neural_net.test(test_dataset)
+
+# in_val = input("enter to read\n")
+# while (in_val != "exit"):
+#     image = data.readSingleImage("number.png")
+#     neural_net.predict(image)
+#     in_val = input("enter to read\n")
 
 
 

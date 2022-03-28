@@ -20,7 +20,7 @@ class Graph:
 
 
 
-    def train(self, dataset, epochs = 20, batch_size = 64, dataset_size_restriction = None):
+    def train(self, dataset, epochs = 1, batch_size = 64, dataset_size_restriction = None):
 
         print("\n####################################### TRAINING #######################################\n")
 
@@ -41,7 +41,7 @@ class Graph:
 
         print("--------------------------------------- epoch {} ---------------------------------------".format(epoch_count))
 
-        Graph.shuffle(dataset, dataset["length"])
+        Graph.shuffle(dataset)
 
         if (dataset_size_restriction is None):
             
@@ -85,24 +85,44 @@ class Graph:
 
 
 
-    #based on https://stackoverflow.com/questions/35646908/numpy-shuffle-multidimensional-array-by-row-only-keep-column-order-unchanged
-    def shuffle(data, length):
-
-        permutations = _lib_.arange(length)
-        _lib_.random.shuffle(permutations)
-
-        for data_dir_key, data_dir_val in data.items():
-            if (data_dir_key == "inputs" or data_dir_key == "outputs"):
-                for node_key, node_val in data_dir_val.items():
-                    node_val[:,:] = node_val[permutations]
-
-
 
     ################################################################################################
     #####   TESTING FUNCTIONALITY
     ################################################################################################
 
+    def test(self, dataset, batch_size = 64):
 
+        print("\n####################################### TESTING #######################################\n")
+
+        dataset_length = dataset["length"]
+
+        print("dataset len " + str(dataset_length))
+
+        #should only be in classification nodes
+        for n in self.outputNodes:
+            n.accuracy = list()
+            n.hit_count = 0
+
+        i = 0
+        while (i < dataset_length):
+
+            # print("forward prop iteration " + str(i // batch_size))
+
+            if (i + batch_size < dataset_length):
+                
+                # self.trainingIteration(epoch_count, i/batch_size + 1, dataset, (i, (i + batch_size)), batch_size, batch_size)
+                self.forwardPropagation(dataset, (i, (i + batch_size)), batch_size)
+                i += batch_size
+
+            else:
+                
+                # self.trainingIteration(epoch_count, i/batch_size + 1, dataset, (i, dataset_length), dataset_length - i, batch_size)
+                self.forwardPropagation(dataset, (i, dataset_length), dataset_length - i)
+                break
+
+        for n in self.outputNodes:
+            n.accuracy.append(n.hit_count / dataset_length * 100)
+            print(n.id + " accuracy {}%".format(n.accuracy[-1]))
 
     ################################################################################################
     #####   PREDICTION FUNCTIONALITY (NO OUTPUT DATA FOR COMPARISON)
@@ -332,10 +352,21 @@ class Graph:
         self.stack_count -= 1
         
                 
-
+    ################################################################################################
+    #####   MISC FUNCTIONALITY
+    ################################################################################################
         
 
+    #based on https://stackoverflow.com/questions/35646908/numpy-shuffle-multidimensional-array-by-row-only-keep-column-order-unchanged
+    def shuffle(data):
 
+        permutations = _lib_.arange(data["length"])
+        _lib_.random.shuffle(permutations)
+
+        for data_dir_key, data_dir_val in data.items():
+            if (data_dir_key == "inputs" or data_dir_key == "outputs"):
+                for node_key, node_val in data_dir_val.items():
+                    node_val[:,:] = node_val[permutations]
 
 
     ################################################################################################
