@@ -4,4 +4,6 @@ NodeNet is a framework to create and train neural networks written entirely in p
 
 In addition, it implements adaptive moment estimation and L2 regularization.
 
+You can use any linear algebra library that has the required operations such as numpy or cupy.
+
 If you find a bug, open up an issue.
