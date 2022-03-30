@@ -30,6 +30,9 @@ class Graph:
             if (n.loss == "CROSS_ENTROPY"):
                 n.accuracy = list()
 
+        for l in self.links:
+            l.adaptive_moment_estimation_current_count = 1
+
         for i in range(epochs):
             self.epoch(dataset, i + 1, batch_size, dataset_size_restriction)
             

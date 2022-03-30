@@ -33,7 +33,7 @@ class Link:
         self.adaptive_moment_estimation_beta1 = 0.9
         self.adaptive_moment_estimation_beta2 = 0.999
         self.adaptive_moment_estimation_eps = 1e-8
-        self.adaptive_moment_estimation_current_count = 1
+        self.adaptive_moment_estimation_current_count = None
 
 
 
