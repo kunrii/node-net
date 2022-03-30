@@ -6,15 +6,17 @@ class Node:
 
     def __init__ (self, neuron_number, activation = None, loss = None, id = None):
         
+        self.id =  Node.generateNewID() if id is None else id                       #name your input and output nodes with an id, matching the one in the data. there can be many input and output nodes, so long as they are properly named
+
         self.neuron_number = neuron_number                                          #the number of neurons
         self.neurons_net_in = None
         self.neurons_activ = None
         
-        self.loaded_value = None                                                    #nodes can use preloaded values, useful to set bias nodes (load an array of ones), all rows will receive the values of your vector
+        #nodes can use preloaded values, useful to set bias nodes (load an array of ones), all rows will receive the values of your vector
+        self.loaded_value = None                                                    
 
-        self.id =  Node.generateNewID() if id is None else id                       #name your input and output nodes with an id, matching the one in the data. there can be many input and output nodes, so long as they are properly named
 
-        self.loss = loss                                                            #if is not none, this is an output neuron
+        self.loss = loss                                                            
         self.observations = None
         self.dError = None
 
@@ -30,7 +32,6 @@ class Node:
 
 
 
-
     def generateNewID():                                   
         Node.static_id += 1
         return "node_{}".format(Node.static_id)
@@ -40,18 +41,18 @@ class Node:
     #needs to be set at the begining of each train iteration, since they can have odd sized batches
     def setNeurons(self, batch_size):
 
-        if (self.loaded_value is None):                                             #sets the neuron matrix to 0
+        if (self.loaded_value is None):                                                 #sets the neuron matrix to 0
             
-            self.neurons_net_in = _lib_.zeros((batch_size, self.neuron_number))            #the neurons, dimension 0 is examples from the batch and dimension 1 is neurons
-            self.neurons_activ = _lib_.empty((batch_size, self.neuron_number))            #the neurons, dimension 0 is examples from the batch and dimension 1 is neurons
+            self.neurons_net_in = _lib_.zeros((batch_size, self.neuron_number))         #the neurons, dimension 0 is examples from the batch and dimension 1 is neurons
+            self.neurons_activ = _lib_.empty((batch_size, self.neuron_number))          #the neurons, dimension 0 is examples from the batch and dimension 1 is neurons
             
-            self.delta_dError = _lib_.empty((self.neuron_number, batch_size))
+            self.delta_dError = _lib_.zeros((self.neuron_number, batch_size))
             self.delta = _lib_.zeros((self.neuron_number, batch_size))
         
-        elif (self.loaded_value.shape == (self.neuron_number,)):                    #if you preloaded a value, it will be set at the start of all training iterations to a constant value
+        elif (self.loaded_value.shape == (self.neuron_number,)):                        #if you preloaded a value, it will be set at the start of all training iterations to a constant value
 
-            self.neurons_net_in = _lib_.empty((batch_size, self.neuron_number))            #the neurons, dimension 0 is examples from the batch and dimension 1 is neurons
-            self.neurons_net_in[:,:] += self.loaded_value.reshape(1,-1)                    #assigns the vector to all of the rows
+            self.neurons_net_in = _lib_.empty((batch_size, self.neuron_number))         #the neurons, dimension 0 is examples from the batch and dimension 1 is neurons
+            self.neurons_net_in[:,:] += self.loaded_value.reshape(1,-1)                 #assigns the vector to all of the rows
 
             self.neurons_activ = _lib_.empty((batch_size, self.neuron_number))
 
@@ -75,12 +76,14 @@ class Node:
 
 
 
-    def setError(self, debug_str):
+    def setError(self):
+
+        if (self.loss is None):
+            raise Exception("Trying to calculate the error on a node without loss, did you forget the loss or accidentally set it as an output node?")
 
         if (self.loss == "CROSS_ENTROPY" and self.activation == "SOFTMAX"):
 
-            self.dError[:,:] = self.neurons_activ - self.observations
-            self.delta_dError[:,:] = self.dError.T
+            self.delta_dError[:,:] = (self.neurons_activ - self.observations).T
             self.hit_count += _lib_.count_nonzero(_lib_.argmax(self.neurons_activ, axis = 1) == _lib_.argmax(self.observations, axis = 1))
 
         else:
@@ -89,8 +92,7 @@ class Node:
 
 
 
-
-    def setActivatedValue(self, padding):
+    def setActivatedValue(self):
 
         if (self.activation is None):
 
@@ -108,7 +110,25 @@ class Node:
 
             raise Exception("Not implemented")
 
-        # print(padding + "...setActivatedValue for node " + self.id + " and sum is {}".format(_lib_.sum(self.neurons_activ)))
+
+
+    def setDelta(self, outboundLinks):
+
+        if (self.activation is None):
+
+            pass
+
+        elif (self.activation == "ReLU"):
+
+            self.delta[:,:] = self.delta * Node.dReLU(self.neurons_net_in).T
+
+        else:
+
+            if (len(outboundLinks) > 0):
+
+                raise Exception("Not implemented for softmax; all nodes implementing softmax must be terminal nodes without any outbound links")
+
+        self.delta += self.delta_dError
 
 
 
@@ -116,9 +136,12 @@ class Node:
         
         return _lib_.maximum(0, neurons)
 
+
+
     def dReLU(neurons):
 
         return _lib_.heaviside(neurons, 0.5)
+
 
 
     def softmax(neurons):

@@ -1,8 +1,7 @@
-import numpy as _lib_ # linear algebra library, such as numpy or cupy
+import numpy as _lib_                           #a linear algebra library, such as numpy or cupy
 import struct
 from array import array
 from os.path import join
-import imageio
 
 
 
@@ -60,10 +59,12 @@ def getMnistData(normalization = "MIN_MAX"):
 
 
 
+#data is a dictionary containing matrices of input and output values associated with a node identification, as well as a length parameter
+#in addition, one hot encoding of labels is done
 def getInput(inputs, labels, normalization):
 
-    assert len(inputs) == len(labels)                                       #some validations
-    length = len(inputs)                                                    #regarding the dataset size
+    assert len(inputs) == len(labels)                                       #some validations regarding the dataset size
+    length = len(inputs)                                                    
 
     input_data = _lib_.empty((length, 28 * 28))
     output_data = _lib_.zeros((length, 10))
@@ -84,23 +85,6 @@ def getInput(inputs, labels, normalization):
 
     return { "length" : length, "inputs" : { "in_node" : input_data }, "outputs" : { "out_node" : output_data } }
 
-
-
-def readSingleImage(file_name):
-
-    data = _lib_.empty((1, 28*28))
-
-    #remember, png is RGBA (red, green, blue, alpha)
-    im = imageio.imread(file_name) 
-    im = 255 - im   #values are inverted
-
-    #https://stackoverflow.com/questions/42516203/converting-rgba-image-to-grayscale-golang
-    #https://www.tutorialspoint.com/dip/grayscale_to_rgb_conversion.htm
-    #https://en.wikipedia.org/wiki/Grayscale#Colorimetric_(perceptual_luminance-preserving)_conversion_to_grayscale
-    data[0,:] = (0.299*im[:,:,0] + 0.587*im[:,:,1] + 0.299*im[:,:,2]).reshape(-1) #ignore alpha channel
-    data[0,:] = normalize(data, "MIN_MAX")
-
-    return { "length" : 1, "inputs" : { "in_node" : data }, "outputs" : { "out_node" : None } }
 
 
 def normalize(data, normalization):

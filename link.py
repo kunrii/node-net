@@ -1,5 +1,4 @@
 import numpy as _lib_
-import node as nodespace
 
 class Link:
 
@@ -30,7 +29,6 @@ class Link:
             raise Exception("Not implemented")
 
 
-
         self.l2_lambda = 1e-4 #1e-4 appears to work fine for this learning problem
         self.adaptive_moment_estimation_beta1 = 0.9
         self.adaptive_moment_estimation_beta2 = 0.999
@@ -45,24 +43,11 @@ class Link:
 
         if (self.type == "FULLY_CONNECTED"):
 
-            # print("correction")
-            # print(self.next_node.delta.sum())
-            # print(self.prev_node.neurons_activ.sum())
-
             dW = _lib_.matmul(self.next_node.delta, self.prev_node.neurons_activ).T / batch_size
-
-            # print("fully connected delta sum {}".format(_lib_.sum(dW)))
-
-            # self.weights[:,:] += - learning_rate * dW
 
         elif (self.type == "1_TO_1"):
 
-            dW = _lib_.sum(self.next_node.delta.T * nodespace.Node.dReLU(self.next_node.neurons_net_in), axis = 0) / batch_size
-
-            # print("1 to 1 delta sum {}".format(_lib_.sum(dW)))
-
-            # self.weights[:] += - learning_rate * dW
-
+            dW = _lib_.sum(self.next_node.delta.T * self.prev_node.neurons_activ, axis = 0) / batch_size
 
         self.raw_mo_1 = self.adaptive_moment_estimation_beta1 * self.raw_mo_1 + (1 - self.adaptive_moment_estimation_beta1) * (dW + l2_reg)
         self.raw_mo_2 = self.adaptive_moment_estimation_beta2 * self.raw_mo_2 + (1 - self.adaptive_moment_estimation_beta2) * ((dW + l2_reg) ** 2)
@@ -75,8 +60,26 @@ class Link:
 
         self.adaptive_moment_estimation_current_count += 1
 
-        # print("weight sum after correction {} from ".format(_lib_.sum(self.weights)) + self.prev_node.id + " to " + self.next_node.id)
 
-        
 
-        
+    def passToNext(self):
+
+        if (self.type == "FULLY_CONNECTED"):
+                
+            self.next_node.neurons_net_in[:,:] += _lib_.matmul(self.prev_node.neurons_activ, self.weights)
+            
+        elif (self.type == "1_TO_1"):
+
+            self.next_node.neurons_net_in[:,:] += self.prev_node.neurons_activ * self.weights.reshape(1,-1)        
+
+
+
+    def passToPrev(self):
+
+        if (self.type == "FULLY_CONNECTED"):
+
+            self.prev_node.delta[:,:] += _lib_.matmul(self.next_node.delta.T, self.weights.T).T
+
+        elif (self.type == "1_TO_1"):
+
+            self.prev_node.delta[:,:] += self.next_node.delta * self.weights.reshape(-1,1)

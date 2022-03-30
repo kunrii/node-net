@@ -8,7 +8,6 @@ class Graph:
         self.nodes = set()
         self.inputNodes = set()
         self.outputNodes = set()
-        self.total_loss = list()
         self.links = set()
         self.learning_rate = 1e-3
 
@@ -20,21 +19,20 @@ class Graph:
 
 
 
-    def train(self, dataset, epochs = 1, batch_size = 64, dataset_size_restriction = None):
+    def train(self, dataset, epochs = 20, batch_size = 64, dataset_size_restriction = None):
 
         print("\n####################################### TRAINING #######################################\n")
 
         if (dataset_size_restriction is not None):
             assert dataset_size_restriction >= batch_size
 
-        #should only be in classification nodes
         for n in self.outputNodes:
-            n.accuracy = list()
+            if (n.loss == "CROSS_ENTROPY"):
+                n.accuracy = list()
 
         for i in range(epochs):
             self.epoch(dataset, i + 1, batch_size, dataset_size_restriction)
             
-
 
 
     def epoch(self, dataset, epoch_count, batch_size, dataset_size_restriction):
@@ -50,45 +48,42 @@ class Graph:
 
             dataset_length = dataset_size_restriction
 
-        
         for n in self.outputNodes:
-            n.hit_count = 0
-
+            if (n.loss == "CROSS_ENTROPY"):
+                n.hit_count = 0
 
         i = 0
         while (i < dataset_length):
 
             if (i + batch_size < dataset_length):
                 
-                # self.trainingIteration(epoch_count, i/batch_size + 1, dataset, (i, (i + batch_size)), batch_size, batch_size)
-                self.trainingIteration(dataset, (i, (i + batch_size)), batch_size, batch_size)
+                self.trainingIteration(dataset, (i, (i + batch_size)), batch_size)
                 i += batch_size
 
             else:
                 
-                # self.trainingIteration(epoch_count, i/batch_size + 1, dataset, (i, dataset_length), dataset_length - i, batch_size)
-                self.trainingIteration(dataset, (i, dataset_length), dataset_length - i, batch_size)
+                self.trainingIteration(dataset, (i, dataset_length), dataset_length - i)
                 break
 
         for n in self.outputNodes:
-            n.accuracy.append(n.hit_count / dataset_length * 100)
-            print(n.id + " accuracy {}%".format(str(n.accuracy[-1])))
+            if (n.loss == "CROSS_ENTROPY"):
+                n.accuracy.append(n.hit_count / dataset_length * 100)
+                print(n.id + " accuracy {}%".format(str(n.accuracy[-1])))
 
 
 
-    def trainingIteration(self, dataset, range, batch_size, standard_batch_size):
+    def trainingIteration(self, dataset, range, batch_size):
         
-        # print("------------- epoch {}, iteration {}, this batch size {}, standard batch_size {} ------------- ".format(epoch_count, iteration_count, batch_size, standard_batch_size))
-
         self.forwardPropagation(dataset, range, batch_size)
         self.backwardPropagation(batch_size)
-
 
 
 
     ################################################################################################
     #####   TESTING FUNCTIONALITY
     ################################################################################################
+
+
 
     def test(self, dataset, batch_size = 64):
 
@@ -100,52 +95,29 @@ class Graph:
 
         #should only be in classification nodes
         for n in self.outputNodes:
-            n.accuracy = list()
-            n.hit_count = 0
+            if (n.loss == "CROSS_ENTROPY"):
+                n.accuracy = list()
+                n.hit_count = 0
 
         i = 0
         while (i < dataset_length):
 
-            # print("forward prop iteration " + str(i // batch_size))
-
             if (i + batch_size < dataset_length):
                 
-                # self.trainingIteration(epoch_count, i/batch_size + 1, dataset, (i, (i + batch_size)), batch_size, batch_size)
                 self.forwardPropagation(dataset, (i, (i + batch_size)), batch_size)
                 i += batch_size
 
             else:
                 
-                # self.trainingIteration(epoch_count, i/batch_size + 1, dataset, (i, dataset_length), dataset_length - i, batch_size)
                 self.forwardPropagation(dataset, (i, dataset_length), dataset_length - i)
                 break
 
         for n in self.outputNodes:
-            n.accuracy.append(n.hit_count / dataset_length * 100)
-            print(n.id + " accuracy {}%".format(n.accuracy[-1]))
+            if (n.loss == "CROSS_ENTROPY"):
+                n.accuracy.append(n.hit_count / dataset_length * 100)
+                print(n.id + " accuracy {}%".format(n.accuracy[-1]))
 
-    ################################################################################################
-    #####   PREDICTION FUNCTIONALITY (NO OUTPUT DATA FOR COMPARISON)
-    ################################################################################################
 
-    def predict(self, data):
-
-        print("\n####################################### PREDICTING #######################################\n")
-
-        for n in self.nodes:
-            n.setNeurons(data["length"])
-            n.process_status = "IDLE"
-
-        for n in self.inputNodes:
-            self.loadInputs(n, data, (0, data["length"])) 
-
-        for n in self.nodes:
-            self.stack_count = -1
-            self.forwardProcess(n)
-
-        for n in self.outputNodes:
-            for m in range(data["length"]):
-                print(n.id + " predicts {}".format(_lib_.argmax(n.neurons_activ, axis = 1)[m]))
 
     ################################################################################################
     #####   FORWARD PROPAGATION FUNCTIONALITY
@@ -153,9 +125,7 @@ class Graph:
 
 
 
-    def forwardPropagation(self, dataset, range, batch_size, standard_batch_size = None):
-
-        # print("---------------- forward propagation ----------------")
+    def forwardPropagation(self, dataset, range, batch_size):
 
         #set the neurons to this batch size
         for n in self.nodes:
@@ -172,18 +142,11 @@ class Graph:
 
         #forward process the nodes
         for n in self.nodes:
-            self.stack_count = -1
             self.forwardProcess(n)
     
 
 
     def forwardProcess(self, node):
-
-        self.stack_count += 1
-        
-        padding = ""
-        for i in range(0,self.stack_count):
-            padding += "\t"
 
         if (node.process_status == "PROCESSING"):
 
@@ -195,43 +158,25 @@ class Graph:
 
         node.process_status = "PROCESSING"
 
-        # print(padding + "processing " + node.id + "...")
-
-        #if node has inbound links, make sure the previous nodes are processed and add their contribution to this node's neurons
         inboundLinks = self.getInboundLinks(node)
         for l in inboundLinks:
-
-            # print(padding + "...assessing inbound links from " + l.prev_node.id + " to " + l.next_node.id)
             
             if (l.prev_node.process_status == "IDLE"):
                 self.forwardProcess(l.prev_node)
-            
-            if (l.type == "FULLY_CONNECTED"):
-                
-                node.neurons_net_in[:,:] += _lib_.matmul(l.prev_node.neurons_activ, l.weights)
-            
-            elif (l.type == "1_TO_1"):
 
-                node.neurons_net_in[:,:] += l.prev_node.neurons_activ * l.weights.reshape(1,-1)
+            l.passToNext()
 
-        #set activation
-        node.setActivatedValue(padding)
+        node.setActivatedValue()
 
-        #if node has an output term, this needs to be processed
         if (node in self.outputNodes):
-            # print(padding + "..." + node.id + " is an output node, calculating error...")
-            node.setError(padding + "...") #will also calculate and return the error at some point
+            node.setError() 
 
         node.process_status = "DONE"
-
-        # print(padding + "..." + node.id + " done processing")
-
-        self.stack_count -= 1
 
 
 
     def loadInputs(self, n, dataset, range):
-        # print("loadInputs called")
+        
         neuronInputs = dataset["inputs"][n.id]
         n.neurons_net_in[:,:] = neuronInputs[range[0]:range[1],:]
 
@@ -248,9 +193,9 @@ class Graph:
     #####   BACKWARD PROPAGATION FUNCTIONALITY
     ################################################################################################
     
-    def backwardPropagation(self, batch_size, standard_batch_size = None):
 
-        # print("---------------- backward propagation ----------------")
+
+    def backwardPropagation(self, batch_size, standard_batch_size = None):
 
         for n in self.nodes:
             n.process_status = "IDLE"
@@ -268,14 +213,6 @@ class Graph:
 
     def backwardProcess(self, node):    
 
-        # pass
-
-        self.stack_count += 1
-        
-        padding = ""
-        for i in range(0,self.stack_count):
-            padding += "\t"
-
         if (node.process_status == "PROCESSING"):
 
             raise Exception("Neural network graphs cannot have cycles, but one was detected involving node " + node.id + " with obj id " + str(node))
@@ -286,76 +223,24 @@ class Graph:
 
         node.process_status = "PROCESSING"
 
-        #only one, and it is the output node
-        if (node in self.outputNodes):
+        outboundLinks = self.getOutboundLinks(node)
+        for l in outboundLinks:
+            
+            if (l.next_node.process_status == "IDLE"):
+                self.backwardProcess(l.next_node)
+            l.passToPrev()
 
-            node.delta[:,:] = node.dError.T
-
-        else:
-
-            outboundLinks = self.getOutboundLinks(node)
-            for l in outboundLinks:
-                
-                if (l.next_node.process_status == "IDLE"):
-                    self.backwardProcess(l.next_node)
-
-                if (l.type == "FULLY_CONNECTED"):
-
-                    node.delta[:,:] += _lib_.matmul(l.next_node.delta.T, l.weights.T).T #* nodespace.Node.dRelu() in the end
-
-                elif (l.type == "1_TO_1"):
-
-                    #ignore since all of these are bias nodes, delta will enver be needed
-                    # node.delta[:,:] += l.next_node.delta * l.weights.reshape(-1, 1)      
-                    pass 
-
-            node.delta[:,:] = node.delta[:,:] * _node_.Node.dReLU(node.neurons_net_in).T 
+        node.setDelta(outboundLinks)
 
         node.process_status = "DONE"
 
-        #######################################################################################################
-
-        # # print(padding + "processing " + node.id + "...")
-        
-        # #if node has outbound links, make sure they are processed and add their contribution do this node's delta
-        # outboundLinks = self.getOutboundLinks(node)
-        # for l in outboundLinks:
-            
-        #     # print(padding + "...assessing outbound links from " + l.prev_node.id + " to " + l.next_node.id)
-        #     if (l.next_node.process_status == "IDLE"):
-        #         self.backwardProcess(l.next_node)
-
-        #     if (l.type == "FULLY_CONNECTED"):
-
-        #         node.delta[:,:] += _lib_.matmul(l.next_node.delta.T, l.weights.T).T #* nodespace.Node.dRelu() in the end
-
-        #     elif (l.type == "1_TO_1"):
-
-        #         # print("1_TO_1 link backprop, for node " + node.id)
-        #         # print(l.next_node.delta.shape)
-        #         # print(l.weights.reshape(1,-1).shape)
-        #         # print(node.delta.shape)
-
-        #         node.delta[:,:] += l.next_node.delta * l.weights.reshape(-1, 1)
-
-        # if (node in self.outputNodes):
-        #     node.delta[:,:] += node.delta_dError
-
-        # node.delta[:,:] += node.delta * (_node_.Node.dReLU(node.neurons_net_in)).T
-
-        # node.process_status = "DONE"
-
-        # # print(padding + "..." + node.id + " done processing")
-
-        #######################################################################################################
-
-        self.stack_count -= 1
         
                 
     ################################################################################################
     #####   MISC FUNCTIONALITY
     ################################################################################################
         
+
 
     #based on https://stackoverflow.com/questions/35646908/numpy-shuffle-multidimensional-array-by-row-only-keep-column-order-unchanged
     def shuffle(data):
@@ -369,6 +254,7 @@ class Graph:
                     node_val[:,:] = node_val[permutations]
 
 
+
     ################################################################################################
     #####   NODE MANAGEMENT FUNCTIONALITY
     ################################################################################################
@@ -378,12 +264,8 @@ class Graph:
     def addNode(self, n):
         
         if (n not in self.nodes):
-            
             self.nodes.add(n)
             
-            if (n.loss is not None):
-                self.outputNodes.add(n)
-
 
 
     def removeNode(self, n):
@@ -391,8 +273,11 @@ class Graph:
         if (n in self.nodes):
 
             if (n in self.inputNodes):
+                
                 self.inputNodes.remove(n)
+
             elif (n in self.outputNodes):
+
                 self.outputNodes.remove(n)
 
             self.nodes.remove(n)
@@ -414,12 +299,18 @@ class Graph:
     def setGeneric(self, n, val, nodeSet):
         
         if (val):
+            
             if (n in self.nodes and n not in nodeSet):  
+                
                 nodeSet.add(n)
+            
             elif (n not in self.nodes and n not in nodeSet):
+                
                 self.nodes.add(n)
                 nodeSet.add(n)
+        
         elif (not val):
+            
             if (n in nodeSet):
                 nodeSet.remove(n)       
 
@@ -450,10 +341,11 @@ class Graph:
 
 
     def addLink(self, l):
-        self.links.add(l)
+        if (l not in self.links):
+            self.links.add(l)
 
 
 
     def removeLink(self, l):
-        self.links.remove(l)
-
+        if (l in self.links):
+            self.links.remove(l)
