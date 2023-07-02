@@ -5,14 +5,16 @@ import graph as _graph_
 import node as _node_
 import link as _link_
 
-print(sys.executable)                                                               #in case you're running from a virtual environment
-sys.setrecursionlimit(2000)                                                         #maximum depth of the neural network, can still crash though
+print(sys.executable)                                                               #i like knowing which interpreter is running things when the program starts
+sys.setrecursionlimit(2000)                                                         #increases the maximum depth of the neural network by allowing for more recursive calls, increasing the maximum amount of calls on the stack
 
+######################################################################################################################
+# SETUP NETWORK
 ######################################################################################################################
 
 nA = _node_.Node(28 * 28, id = "in_node")
-nB = _node_.Node(250, activation = "ReLU", id = "node_b")                             #250 works fine
-nC = _node_.Node(125, activation = "ReLU", id = "node_c")                             #125 works fine
+nB = _node_.Node(250, activation = "ReLU", id = "node_b")                           #250 works fine
+nC = _node_.Node(125, activation = "ReLU", id = "node_c")                           #125 works fine
 nD = _node_.Node(10, activation = "SOFTMAX", loss = "CROSS_ENTROPY", id = "out_node")
 
 lAB = _link_.Link(nA, nB, "FULLY_CONNECTED")
@@ -47,13 +49,20 @@ neural_net.addLink(lbC)
 neural_net.addLink(lbD)
 
 ######################################################################################################################
+# RUN NETWORK
+######################################################################################################################
 
+#loads the training and test data
 train_dataset, test_dataset = _data_.getMnistData()
 
-neural_net.test(test_dataset)                                                       #expected is 10% with random weights
+#tests the network on the test dataset, the expected accuracy being around 10% with random weights
+neural_net.test(test_dataset)                                                       
 
-neural_net.train(train_dataset)
+#trains the network with the training data
+neural_net.train(train_dataset)                                                    
 
+#tests the network on the test data, again
 neural_net.test(test_dataset)
 
+#optional sanity check, test the network on the training data
 neural_net.test(train_dataset)

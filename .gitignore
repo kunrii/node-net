@@ -133,4 +133,5 @@ dmypy.json
 __pycache__
 dataset
 *.png
+!requirements.txt
 *.txt
