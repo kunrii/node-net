@@ -94,8 +94,6 @@ class Graph:
 
         dataset_length = dataset["length"]
 
-        print("dataset len " + str(dataset_length))
-
         #should only be in classification nodes
         for n in self.outputNodes:
             if (n.loss == "CROSS_ENTROPY"):
